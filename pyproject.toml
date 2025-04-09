@@ -1,0 +1,29 @@
+[project]
+name = "semanticserver"
+version = "0.1.0"
+description = "A semantic search server for literary scenes"
+authors = [{ name = "Marco Condarelli", email = "you@example.com" }]
+readme = "README.md"
+requires-python = ">=3.9"
+
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic>=2",
+    "pyyaml",
+    "chromadb",
+    "datamodel-code-generator",
+    "sentence-transformers"
+]
+
+[project.optional-dependencies]
+cuda = ["torch==2.1.0+cu118", "torchvision==0.16.0+cu118", "torchaudio==2.1.0+cu118"]
+rocm = ["torch==2.1.0+rocm5.4.2", "torchvision==0.16.0+rocm5.4.2", "torchaudio==2.1.0+rocm5.4.2"]
+dev = ["black", "flake8", "mypy", "pytest"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

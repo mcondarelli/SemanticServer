@@ -1,0 +1,134 @@
+openapi: 3.0.3
+info:
+  title: Semantic Server API
+  version: 0.1.0
+  description: API for indexing and querying semantically-embedded literary scenes.
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /embed:
+    post:
+      summary: Generate embedding from raw text
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmbedRequest'
+      responses:
+        '200':
+          description: Embedding vector returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmbedResponse'
+
+  /scene:
+    post:
+      summary: Add or update a scene in the semantic database
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Scene'
+      responses:
+        '200':
+          description: Scene accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /analyze:
+    post:
+      summary: Semantic similarity search given a scene ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysisRequest'
+      responses:
+        '200':
+          description: Similar scenes returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisResult'
+
+components:
+  schemas:
+    EmbedRequest:
+      type: object
+      properties:
+        text:
+          type: string
+      required:
+        - text
+
+    EmbedResponse:
+      type: object
+      properties:
+        embedding:
+          type: array
+          items:
+            type: number
+          example: [0.1, -0.23, 0.42]
+
+    Scene:
+      type: object
+      properties:
+        scene_id:
+          type: string
+        title:
+          type: string
+        text:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+        - scene_id
+        - text
+
+    AnalysisRequest:
+      type: object
+      properties:
+        scene_id:
+          type: string
+        top_k:
+          type: integer
+          default: 3
+      required:
+        - scene_id
+
+    AnalysisResult:
+      type: object
+      properties:
+        neighbors:
+          type: array
+          items:
+            type: object
+            properties:
+              scene_id:
+                type: string
+              similarity:
+                type: number
