@@ -28,7 +28,7 @@ then
     pip uninstall -y torch torchvision torchaudio sentence-transformers
 
     # Install ROCm-compatible stack
-    pip install --pre torch torchvision torchaudio \
+    pip install --pre torch \
       --index-url https://download.pytorch.org/whl/nightly/rocm6.3
 
     # Then re-install sentence-transformers *without* triggering torch reinstallation
@@ -36,6 +36,6 @@ then
     pip install -e .[dev]  # now safe
 fi
 
-print("🔧 Generating Pydantic models from OpenAPI spec...")
+echo "🔧 Generating Pydantic models from OpenAPI spec..."
 datamodel-codegen --input "$YAML" --input-file-type  openapi --output "$OUT"
 
