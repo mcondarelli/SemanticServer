@@ -1,136 +1,134 @@
+
 # SemanticServer
-A semantic indexing and search API for literary scenes.
-Designed to support interactive and long-range editing of narrative structures by embedding text scenes and enabling contextual queries.
+
+**SemanticServer** is a modular FastAPI server and semantic storage backend designed to store and query fragments of text using semantic search and metadata-driven analysis.
+
+It supports full-text storage, semantic embedding, and background metadata extraction for advanced querying.
 
 ---
 
-## 🚀 Features
+## 🔧 Current Features
 
-- Scene ingestion with semantic vector embedding
-- Embedding-based similarity search between scenes
-- Pydantic model generation from OpenAPI YAML spec
-- Optional support for GPU acceleration (CPU, CUDA, ROCm)
-- Clean and modular FastAPI backend
-
-## Status
-
-This code is currently work-in-progress and absolutely unfit for any serious usage.
-
-Code is bound to change dramatically as I progress my experimentation with code and models.
-
-Since I'm interested mainly in working in Italian language my current "real life" test is 
-with the Italian Constitution which is a very well-structured document, publicly available
-and fre fromm any kind of copyright.
+- Store and retrieve **text fragments** (formerly "scenes")
+- Full text stored in a **SQLite3** backend
+- Semantic embeddings indexed via **ChromaDB**
+- Unified access via the `SemanticDB` class
+- Background architecture for pluggable semantic processors (in progress)
+- Full-text and metadata can be retrieved or updated independently
 
 ---
 
-## 📦 Installation
+## 🧱 Core Concepts
 
-### 1. Clone the repo
+### Fragment
+
+```python
+@dataclass
+class Fragment:
+    id: Optional[str]
+    text: Optional[str]
+    metadata: Optional[FragmentMetadata]
+```
+
+- A fragment represents a self-contained piece of text (e.g., a paragraph, scene, document section).
+- `id` is a unique identifier (generated if missing).
+- `text` is the raw content.
+- `metadata` contains semantic or structural information.
+
+### FragmentMetadata
+
+```python
+@dataclass
+class FragmentMetadata:
+    fields: dict[str, Any]
+```
+
+- Metadata is stored as a flexible key-value dictionary.
+- Can be enriched with custom processors (e.g., extract characters, tone, summary).
+- Typed properties and validation can be added incrementally.
+
+---
+
+## 📦 Storage Layer: `SemanticDB`
+
+The `SemanticDB` class is the single entry point for all fragment operations.
+
+### API
+
+- `put_fragment(fragment: Fragment) -> Fragment`:  
+  Insert or update a fragment. Missing fields are filled if possible.
+
+- `get_fragment(fragment: Fragment, needs_text=True, needs_metadata=True, **kwargs) -> Fragment`:  
+  Retrieve and complete a fragment based on its ID or other available fields. Additional retrieval options may be specified via `kwargs`.
+
+---
+
+## 🧠 In Progress: Semantic Pipeline
+
+We are building a modular **semantic pipeline** that:
+
+- Processes newly stored fragments in background
+- Extracts and enriches metadata (NER, tone, summary, etc.)
+- Allows multiple asynchronous processors working in parallel
+- Tracks which processors have been applied via flags
+- Enables queries to be aware of processing status
+
+Processors will be manually triggerable via HTTP endpoints for testing. Future automation (e.g. cron or watch loop) will use the same endpoints.
+
+---
+
+## 🚀 Development Roadmap
+
+- [x] Refactor naming (`Scene` → `Fragment`, `Chroma` → `SemanticDB`)
+- [x] Full-text storage in SQLite
+- [x] Unified fragment abstraction
+- [ ] Background metadata processors (NER, tone, etc.)
+- [ ] Modular query handlers based on metadata
+- [ ] Improved embedding model selection
+- [ ] Expanded semantic query API
+
+---
+
+## 🧪 Quickstart
 
 ```bash
-git clone https://github.com/mcondarelli/SemanticServer
-cd SemanticServer
+# Setup
+./scripts/bootstrap.sh
+
+# Run the server
+uvicorn semanticserver.main:app --reload
 ```
 
-### 2. Set up your Python environment
-Use provided shell script to create a suitable Python Virtual Environment and activate it. 
-```bash
-scripts/bootstrap.sh
-source .venv/bin/activate
-```
-The script honours an optional argument: `rocm` to install AMD-ROCm-aware versions of 
-`pythorch` ans related programs.  
+API will be available at [http://localhost:8000](http://localhost:8000)
 
-### 3. Install dependencies (default: CPU-only, already included in script)
-```
-pip install -e .
-```
-Optional: Install with development tools
-```
-pip install -e .[dev]
-```
-Optional: For ROCm (AMD GPUs)
-```
-pip install --pre torch torchvision torchaudio \
-  --index-url https://download.pytorch.org/whl/nightly/rocm6.3
-pip install -e .[dev]
-```
-Optional: For CUDA (NVIDIA GPUs)
-```
-pip install torch torchvision torchaudio
-pip install -e .[dev]
-```
-## 🧪 Usage
-Start the server:
-```
-uvicorn semanticserver.main:app --reload --app-dir src
-```
-### Available endpoints:
+---
 
--    GET /health — Health check
--    POST /embed — Return embedding vector from text
--    POST /scene — Add or update a scene
--    POST /analyze — Get semantically similar scenes
+## 📂 Structure Overview
 
-#### Interactive docs:
-- 📘 Swagger UI → http://localhost:8000/docs
-- 📘 Redoc → http://localhost:8000/redoc
-- 🧱 Project Structure
 ```
 SemanticServer/
-├── data                    # Runtime persistence (excluded from git)
-│   └── chroma_db
-├── openapi.yaml            # API spec (used to generate models)
-├── pyproject.toml          # Install config and dependency groups
-├── README.md
-├── scripts
-│   ├── bootstrap.py        # One-time generation of pydantic models
-│   └── bootstrap.sh        # One-time generation of .vnv
-├── setup.py
-├── src                     # Bootstrap + model generation
-│   └── semanticserver
-│       ├── config.py
-│       ├── embeddings
-│       │   ├── base.py
-│       │   ├── chroma.py
-│       │   └── sentence_transformer.py
-│       ├── __init__.py
-│       ├── main.py
-│       └── models
-│           ├── generated.py
-│           └── id_gen.py
-└── test
-    ├── fetch_constitution.py
-    ├── test_client.py
-    └── test_query.py
+├── src/semanticserver/
+│   ├── main.py                  # FastAPI entry point
+│   ├── embeddings/              # Vector store abstraction (Chroma)
+│   │   └── semantic_db.py       # Unified interface (formerly chroma.py)
+│   ├── models/                  # Fragment and metadata models
+│   ├── semantic_pipeline_base.py # Base class for async processors
+│   └── ...
+├── data/                        # Runtime data (e.g. SQLite3 fulltext DB)
+├── scripts/                     # Bootstrap/setup scripts
 ```
-## 🛠 Requirements
 
-    Python 3.9+
+---
 
-    pip, setuptools, wheel
+## 🧠 Philosophy
 
-## 📄 License
-GPLv3 License
+- Text fragments and metadata are first-class entities.
+- Separation of concerns: storage, enrichment, and querying are modular.
+- Designed for slow, background enrichment — but fast, structured querying.
+- Architecture aims to support future AI-driven text analysis and classification.
 
-## 📌 Notes
+---
 
-    This project is under active development.
+## 📜 License
 
-    GPU acceleration is optional and handled via optional dependency groups.
-
-    Scene metadata, extractors, and persistence logic are modular and extensible.
-
-    For testing purposes a `SemanticServer/data` directory will b created to hold
-    `chroma_db` and other persistency files.
-
-## 🤝 Contributing
-
-Contributions, questions, or feedback are welcome.
-
-This project uses openapi.yaml as the source of truth for its API and generates 
-models automatically during setup.
-
-
-
+GPL3 License

@@ -7,13 +7,13 @@ from pydantic import BaseModel
 import chromadb
 from chromadb.utils import embedding_functions
 
-from semanticserver.models.generated import Scene, AnalysisRequest, AnalysisResult, Neighbor
+from semanticserver.models.generated import Fragment, AnalysisRequest, AnalysisResult, Neighbor
 
 
 # Configuration Model
 class ChromaConfig(BaseModel):
     model_name: str = "all-MiniLM-L6-v2"
-    collection_name: str = "scenes"
+    collection_name: str = "fragments"
     similarity_metric: str = "cosine"
 
 
@@ -23,7 +23,7 @@ class SQLite:
         file.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(file))
         cursor = self.conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS scenes (id TEXT PRIMARY KEY, text TEXT)''')
+        cursor.execute('''CREATE TABLE IF NOT EXISTS fragments (id TEXT PRIMARY KEY, text TEXT)''')
         self.conn.commit()
 
     def __del__(self):
@@ -34,28 +34,28 @@ class SQLite:
             self.conn.close()
             self.conn = None
 
-    def put_scene(self, scene: Scene):
+    def put_fragment(self, fragment: Fragment):
         cursor = self.conn.cursor()
-        cursor.execute("INSERT INTO scenes (id, text) VALUES (?, ?)", (scene.id, scene.text))
+        cursor.execute("INSERT INTO fragments (id, text) VALUES (?, ?)", (fragment.fragment_id, fragment.text))
         self.conn.commit()
         self.conn.close()
 
-    def get_scene(self, scene: Scene):
+    def get_fragment(self, fragment: Fragment):
         cursor = self.conn.cursor()
-        cursor.execute("SELECT text FROM scenes WHERE id = ?", (scene.id,))
+        cursor.execute("SELECT text FROM fragments WHERE id = ?", (fragment.fragment_id,))
         result = cursor.fetchone()
         if result:
-            scene.text = result[0]
-            return scene
+            fragment.text = result[0]
+            return fragment
         else:
-            raise Chroma.ChromaError("Scene text not found")
+            raise SemanticDB.SemanticDBError("fragment text not found")
 
 
-class Chroma:
+class SemanticDB:
     _instance = None
     _initialized = False
 
-    class ChromaError(Exception):
+    class SemanticDBError(Exception):
         pass
 
     def __new__(cls, *args, **kwargs):
@@ -81,7 +81,7 @@ class Chroma:
                 self.sqlite.close()
             self.location.mkdir(parents=True, exist_ok=True)
             self.client = chromadb.PersistentClient(
-                path=str(self.location / "chroma_db")
+                path=str(self.location / "semantic_db")
             )
             embedding_func = embedding_functions.SentenceTransformerEmbeddingFunction(
                 model_name=self.config.model_name
@@ -96,32 +96,32 @@ class Chroma:
             self.sqlite = SQLite(self.location / 'auxiliary.sqlite3')
             self.last_update = time.time()
         except Exception as e:
-            raise self.ChromaError(f"Chroma init failed: {str(e)}")
+            raise self.SemanticDBError(f"Chroma init failed: {str(e)}")
 
-    def upload_scene(self, scene: Scene):
+    def upload_fragment(self, fragment: Fragment):
         if self.collection is None:
             self.reconfigure()
-        metadata = {"title": scene.title, **(scene.metadata or {})}
+        metadata = {"title": fragment.title, **(fragment.metadata or {})}
         self.collection.upsert(
-            ids=[scene.scene_id],
-            documents=[scene.text],
+            ids=[fragment.fragment_id],
+            documents=[fragment.text],
             metadatas=[metadata]  # was: [{"title": scene.title, **scene.metadata}]
         )
-        self.sqlite.put_scene(scene)
+        self.sqlite.put_fragment(fragment)
 
-    def download_scene(self, scene_id):
-        scene = Scene(scene_id=scene_id, text='')
-        scene = self.sqlite.get_scene(scene)
-        return scene
+    def download_fragment(self, fragment_id):
+        fragment = Fragment(fragment_id=fragment_id, text='')
+        fragment = self.sqlite.get_fragment(fragment)
+        return fragment
 
-    def analyze_scene(self, request: AnalysisRequest):
+    def analyze_fragment(self, request: AnalysisRequest):
         if self.collection is None:
             self.reconfigure()
         res = self.collection.query(
             query_texts=[request.text],
             n_results=request.top_k
         )
-        print(f'analyze_scene: {res}')
+        print(f'analyze_fragment: {res}')
         if not res["ids"] or not res["distances"]:
             return AnalysisResult(neighbors=[])  # no results
 
@@ -133,7 +133,7 @@ class Chroma:
             raise ValueError("Mismatch between ids and distances in Chroma result")
 
         answ = AnalysisResult(neighbors=[
-            Neighbor(scene_id=sid, similarity=score) for sid, score in zip(ids, distances)
+            Neighbor(fragment_id=sid, similarity=score) for sid, score in zip(ids, distances)
         ])
         return answ
 

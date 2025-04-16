@@ -1,8 +1,8 @@
 [project]
 name = "semanticserver"
 version = "0.1.0"
-description = "A semantic search server for literary scenes"
-authors = [{ name = "Marco Condarelli", email = "you@example.com" }]
+description = "A semantic search server for text fragments"
+authors = [{ name = "Mauro Condarelli", email = "mc5686@@mcilink.it" }]
 readme = "README.md"
 requires-python = ">=3.9"
 
@@ -27,3 +27,12 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+pydantic=2.11
+fastapi=0.115
+semanticserver=0.1
+PyYAML=6.0
+chromadb=1.0
+sentence-transformers=4.0
+requests=2.32
+setuptools=78.1

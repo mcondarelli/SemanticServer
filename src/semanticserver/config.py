@@ -6,7 +6,7 @@ import yaml
 
 class Settings(BaseModel):
     embedding_model: str = "all-MiniLM-L6-v2"
-    persist_dir: str = "data/chroma_db"
+    persist_dir: str = "data/semantic_db"
     top_k: int = 5
 
 

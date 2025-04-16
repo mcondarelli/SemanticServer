@@ -1,7 +1,7 @@
 import json
 import requests
 
-from semanticserver.models.generated import Scene, AnalysisRequest, AnalysisResult
+from semanticserver.models.generated import Fragment, AnalysisRequest, AnalysisResult
 import requests
 
 QUERIES = [
@@ -32,7 +32,7 @@ def test_semantic_query():
     top_k = 5
     for case in QUERIES:
         payload = AnalysisRequest(text=case['query'], top_k=5, min_score=min_score)
-        r = requests.post("http://localhost:8000/analyze", json=payload.model_dump())
+        r = requests.post("http://localhost:9095/analyze", json=payload.model_dump())
         print(f"\nQuery: {case['query']}")
         if r.status_code != 200:
             print(f"  ❌ Request failed with status {r.status_code}")
@@ -44,11 +44,11 @@ def test_semantic_query():
 
         print("  Matches:")
         for m in matches:
-            print(f"    {m.scene_id}: score={m.similarity:.4f}")
+            print(f"    {m.fragment_id}: score={m.similarity:.4f}")
 
         # Check if any expected match appears
         expected = set(case["expected"])
-        returned = set(m.scene_id for m in matches)
+        returned = set(m.fragment_id for m in matches)
 
         if expected and not (expected & returned):
             print(f"  ❌ Expected match not found. Expected one of: {expected}")

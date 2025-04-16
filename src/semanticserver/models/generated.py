@@ -17,8 +17,8 @@ class EmbedResponse(BaseModel):
     embedding: Optional[List[float]] = Field(None, example=[0.1, -0.23, 0.42])
 
 
-class Scene(BaseModel):
-    scene_id: str
+class Fragment(BaseModel):
+    fragment_id: str
     title: Optional[str] = None
     text: str
     metadata: Optional[Dict[str, Any]] = None
@@ -31,7 +31,7 @@ class AnalysisRequest(BaseModel):
 
 
 class Neighbor(BaseModel):
-    scene_id: Optional[str] = None
+    fragment_id: Optional[str] = None
     similarity: Optional[float] = None
 
 
