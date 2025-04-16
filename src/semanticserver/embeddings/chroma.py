@@ -1,5 +1,5 @@
+import sqlite3
 import time
-from importlib.metadata import metadata
 from pathlib import Path
 from typing import Optional
 
@@ -16,6 +16,39 @@ class ChromaConfig(BaseModel):
     collection_name: str = "scenes"
     similarity_metric: str = "cosine"
 
+
+class SQLite:
+    def __init__(self, file: Path):
+        self.file = file
+        file.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(str(file))
+        cursor = self.conn.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS scenes (id TEXT PRIMARY KEY, text TEXT)''')
+        self.conn.commit()
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        if hasattr(self, 'conn') and self.conn is not None:
+            self.conn.close()
+            self.conn = None
+
+    def put_scene(self, scene: Scene):
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO scenes (id, text) VALUES (?, ?)", (scene.id, scene.text))
+        self.conn.commit()
+        self.conn.close()
+
+    def get_scene(self, scene: Scene):
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT text FROM scenes WHERE id = ?", (scene.id,))
+        result = cursor.fetchone()
+        if result:
+            scene.text = result[0]
+            return scene
+        else:
+            raise Chroma.ChromaError("Scene text not found")
 
 
 class Chroma:
@@ -38,11 +71,14 @@ class Chroma:
             self.client: Optional[chromadb.PersistentClient] = None
             self.collection: Optional[chromadb.Collection] = None
             self.last_update = 0
+            self.sqlite = None
 
     def reconfigure(self, config: ChromaConfig=None):
         if config:
             self.config = config
         try:
+            if self.sqlite is not None:
+                self.sqlite.close()
             self.location.mkdir(parents=True, exist_ok=True)
             self.client = chromadb.PersistentClient(
                 path=str(self.location / "chroma_db")
@@ -57,7 +93,7 @@ class Chroma:
                 embedding_function=embedding_func,
                 metadata={"hnsw:space": self.config.similarity_metric},
             )
-
+            self.sqlite = SQLite(self.location / 'auxiliary.sqlite3')
             self.last_update = time.time()
         except Exception as e:
             raise self.ChromaError(f"Chroma init failed: {str(e)}")
@@ -71,6 +107,12 @@ class Chroma:
             documents=[scene.text],
             metadatas=[metadata]  # was: [{"title": scene.title, **scene.metadata}]
         )
+        self.sqlite.put_scene(scene)
+
+    def download_scene(self, scene_id):
+        scene = Scene(scene_id=scene_id, text='')
+        scene = self.sqlite.get_scene(scene)
+        return scene
 
     def analyze_scene(self, request: AnalysisRequest):
         if self.collection is None:

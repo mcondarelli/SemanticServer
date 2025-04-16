@@ -31,6 +31,13 @@ def upload_scene(req: Scene):
     except Chroma.ChromaError as e:
         raise HTTPException(500, str(e))
 
+@app.get("/scene/{scene_id}")
+def download_scene(scene_id: str):
+    try:
+        return chroma.download_scene(scene_id)
+    except Chroma.ChromaError as e:
+        raise HTTPException(500, str(e))
+
 @app.post("/analyze")
 def analyze(req: AnalysisRequest):
     try:

@@ -56,10 +56,40 @@ paths:
                 properties:
                   status:
                     type: string
+      tags:
+        - Scenes
 
+  /scene/{scene_id}:
+    get:
+      summary: Retrieve full text
+      description: Retrieve the full text based on the scene ID
+      operationId: getScene
+      parameters:
+        - name: scene_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  text:
+                    type: string
+        '404':
+          description: Scene not found
+      tags:
+        - Scenes
+        
   /analyze:
     post:
-      summary: Semantic similarity search given a scene ID
+      summary: Semantic similarity search given a text query
       requestBody:
         required: true
         content:
@@ -73,6 +103,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AnalysisResult'
+      tags:
+        - Scenes
 
 components:
   schemas:
@@ -112,13 +144,15 @@ components:
     AnalysisRequest:
       type: object
       properties:
-        scene_id:
+        text:
           type: string
         top_k:
           type: integer
           default: 3
+        min_score:
+          type: number
       required:
-        - scene_id
+        - text
 
     AnalysisResult:
       type: object
